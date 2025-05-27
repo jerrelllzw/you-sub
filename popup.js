@@ -1,94 +1,95 @@
-function syncWithStorage(subsFromYouTube, done) {
-	chrome.storage.local.get(['subscriptions', 'groups'], (result) => {
-		const stored = result.subscriptions || {};
-		const groups = result.groups || ['Ungrouped'];
-		const updated = {};
+////////////////////
+// Initialization //
+////////////////////
 
-		for (const sub of subsFromYouTube) {
-			if (stored[sub.channelId]) {
-				updated[sub.channelId] = {
-					...sub,
-					group: stored[sub.channelId].group || 'Ungrouped',
-				};
-			} else {
-				updated[sub.channelId] = {
-					...sub,
-					group: 'Ungrouped',
-				};
-			}
-		}
+// Ensure the popup is ready before adding event listeners
+document.addEventListener('DOMContentLoaded', () => {
+	document
+		.getElementById('openAndSyncBtn')
+		.addEventListener('click', openAndSync);
+	document.getElementById('addGroupBtn').addEventListener('click', addNewGroup);
+	loadAndDisplayGroups();
+});
 
-		chrome.storage.local.set({ subscriptions: updated, groups }, done);
-	});
-}
+/////////////////////
+// Group functions //
+/////////////////////
 
+// Load groups and subscriptions from storage and display them
 function loadAndDisplayGroups() {
 	chrome.storage.local.get(['subscriptions', 'groups'], (result) => {
 		const container = document.getElementById('groups');
 		container.innerHTML = '';
 
-		let groups = result.groups || ['Ungrouped'];
-		groups.sort((a, b) => a.localeCompare(b)); // Sort groups alphabetically
-
+		let groups = result.groups || [defaultGroup];
+		groups.sort((a, b) => a.localeCompare(b)); // Sort alphabetically
 		const subs = result.subscriptions || {};
 		const grouped = {};
 
+		// Group subscriptions by their group name
 		for (const id in subs) {
 			const sub = subs[id];
 			if (!grouped[sub.group]) grouped[sub.group] = [];
 			grouped[sub.group].push(sub);
 		}
 
-		for (const groupName of groups) {
+		// For each group
+		for (const group of groups) {
 			// Skip groups that have no subscriptions
-			if (!grouped[groupName] || grouped[groupName].length === 0) continue;
+			if (!grouped[group] || grouped[group].length === 0) continue;
 
-			// Create group header and delete button, etc.
+			// Create group header
 			const header = document.createElement('div');
 			header.className = 'group-header';
 
+			// Create title element
 			const title = document.createElement('span');
-			title.textContent = groupName;
+			title.textContent = group;
 			header.appendChild(title);
 
-			if (groupName !== 'Ungrouped') {
+			// Create delete button for non-default groups
+			if (group !== defaultGroup) {
 				const delBtn = document.createElement('button');
-				delBtn.textContent = 'delete';
+				delBtn.textContent = 'Delete';
 				delBtn.className = 'delete-btn';
-				delBtn.title = 'Delete group';
-				delBtn.addEventListener('click', () => deleteGroup(groupName));
+				delBtn.addEventListener('click', () => deleteGroup(group));
 				header.appendChild(delBtn);
 			}
+
+			// Append header
 			container.appendChild(header);
 
-			// Append subscriptions in original order (no sorting)
-			for (const sub of grouped[groupName]) {
+			// For each subscription in the group
+			for (const sub of grouped[group]) {
+				// Create row
 				const row = document.createElement('div');
 				row.className = 'channel-row';
 
+				// Create icon
 				const iconImg = document.createElement('img');
-				iconImg.src = sub.icon || 'default-icon.png'; // fallback icon if none
+				iconImg.src = sub.icon;
 				iconImg.className = 'channel-icon';
 				row.appendChild(iconImg);
 
+				// Create link to channel
 				const link = document.createElement('a');
 				link.textContent = sub.name;
 				link.href = sub.url;
 				link.className = 'channel-link';
 				link.onclick = (e) => {
-					e.preventDefault(); // Prevent default navigation
-					chrome.tabs.create({ url: sub.url, active: false }); // Open in background
+					e.preventDefault();
+					chrome.tabs.create({ url: sub.url, active: false });
 				};
-
 				row.appendChild(link);
 
+				// Create dropdown for group selection
 				const dropdown = document.createElement('select');
-				groups.forEach((g) => {
-					const opt = document.createElement('option');
-					opt.value = g;
-					opt.textContent = g;
-					if (g === sub.group) opt.selected = true;
-					dropdown.appendChild(opt);
+				groups.forEach((group) => {
+					const option = document.createElement('option');
+					option.value = group;
+					option.textContent = group;
+					if (group === sub.group) option.selected = true;
+					dropdown.appendChild(option);
 				});
 				dropdown.addEventListener('change', () =>
 					updateSubscriptionGroup(
@@ -99,12 +100,14 @@ function loadAndDisplayGroups() {
 				);
 				row.appendChild(dropdown);
 
+				// Append row
 				container.appendChild(row);
 			}
 		}
 	});
 }
 
+// Update subscription group in local storage
 function updateSubscriptionGroup(channelId, newGroup, callback) {
 	chrome.storage.local.get('subscriptions', (result) => {
 		const subs = result.subscriptions || {};
@@ -117,13 +120,99 @@ function updateSubscriptionGroup(channelId, newGroup, callback) {
 	});
 }
 
+////////////////////
+// Sync functions //
+////////////////////
+
+// Open YouTube subscriptions page and sync with local storage
+function openAndSync() {
+	chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+		const tab = tabs[0];
+
+		// Go to subscriptions page if not already there, then sync
+		if (tab.url.includes('youtube.com/feed/channels')) {
+			fetchAndSyncWithTab(tab.id);
+		} else {
+			chrome.tabs.update(
+				tab.id,
+				{ url: 'https://www.youtube.com/feed/channels' },
+				(updatedTab) => {
+					waitForTabLoad(updatedTab.id, fetchAndSyncWithTab);
+				}
+			);
+		}
+	});
+}
+
+// Wait for the tab to finish loading before syncing
+function waitForTabLoad(tabId, callback) {
+	function handleUpdate(updatedTabId, info) {
+		if (updatedTabId === tabId && info.status === 'complete') {
+			chrome.tabs.onUpdated.removeListener(handleUpdate);
+			callback(tabId);
+		}
+	}
+	chrome.tabs.onUpdated.addListener(handleUpdate);
+}
+
+// Sync subscriptions from the active YouTube tab
+function fetchAndSyncWithTab(tabId) {
+	chrome.tabs.sendMessage(
+		tabId,
+		{ type: 'FETCH_SUBSCRIPTIONS' },
+		(response) => {
+			// Handle errors or no response
+			if (chrome.runtime.lastError || !response) {
+				alert(
+					'Could not fetch subscriptions. Try refreshing the YouTube page.'
+				);
+				return;
+			}
+
+			// Sync with local storage
+			const subs = response.subs;
+			syncWithStorage(subs, loadAndDisplayGroups);
+		}
+	);
+}
+
+// Sync subscriptions from YouTube with local storage
+function syncWithStorage(subsFromYouTube, done) {
+	chrome.storage.local.get(['subscriptions', 'groups'], (result) => {
+		const subscriptions = result.subscriptions || {};
+		const groups = result.groups || [defaultGroup];
+		const updated = {};
+
+		// Update existing subscriptions and remove old ones
+		for (const sub of subsFromYouTube) {
+			updated[sub.channelId] = {
+				...sub,
+				group: subscriptions[sub.channelId]?.group || defaultGroup,
+			};
+		}
+
+		// Update local storage
+		chrome.storage.local.set({ subscriptions: updated, groups }, done);
+	});
+}
+
+///////////////////////////
+// Group CRUD operations //
+///////////////////////////
+
+// Default group name
+const defaultGroup = 'Ungrouped';
+
+// Add new group from input
 function addNewGroup() {
+	// Validate input
 	const input = document.getElementById('newGroupInput');
 	const newGroup = input.value.trim();
 	if (!newGroup) return;
 
+	// Add new group to storage if it doesn't already exist
 	chrome.storage.local.get('groups', (result) => {
-		const groups = result.groups || ['Ungrouped'];
+		const groups = result.groups || [defaultGroup];
 		if (!groups.includes(newGroup)) {
 			groups.push(newGroup);
 			chrome.storage.local.set({ groups }, () => {
@@ -136,71 +225,26 @@ function addNewGroup() {
 	});
 }
 
-function deleteGroup(groupName) {
+// Delete a group and move affected subscriptions to default group
+function deleteGroup(group) {
 	chrome.storage.local.get(['subscriptions', 'groups'], (result) => {
 		const subs = result.subscriptions || {};
 		const groups = result.groups || [];
 
-		// Move affected subs to 'Ungrouped'
+		// Move affected subs to default group
 		for (const id in subs) {
-			if (subs[id].group === groupName) {
-				subs[id].group = 'Ungrouped';
+			if (subs[id].group === group) {
+				subs[id].group = defaultGroup;
 			}
 		}
 
 		// Remove the group
-		const updatedGroups = groups.filter((g) => g !== groupName);
-
+		const updatedGroups = groups.filter((g) => g !== group);
 		chrome.storage.local.set(
 			{ subscriptions: subs, groups: updatedGroups },
 			() => {
 				loadAndDisplayGroups();
 			}
 		);
-	});
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-	document
-		.getElementById('openAndSyncBtn')
-		.addEventListener('click', openAndSync);
-	document.getElementById('addGroupBtn').addEventListener('click', addNewGroup);
-	loadAndDisplayGroups();
-});
-
-function openAndSync() {
-	chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-		const tab = tabs[0];
-		const subsUrl = 'https://www.youtube.com/feed/channels';
-
-		function doSyncWithTab(targetTabId) {
-			chrome.tabs.sendMessage(
-				targetTabId,
-				{ type: 'SCRAPE_SUBSCRIPTIONS' },
-				(response) => {
-					if (chrome.runtime.lastError || !response) {
-						alert(
-							'Could not fetch subscriptions. Try refreshing the YouTube page.'
-						);
-						return;
-					}
-					const subs = response.subs;
-					syncWithStorage(subs, loadAndDisplayGroups);
-				}
-			);
-		}
-
-		if (tab.url.includes('youtube.com/feed/channels')) {
-			doSyncWithTab(tab.id);
-		} else {
-			chrome.tabs.update(tab.id, { url: subsUrl }, (updatedTab) => {
-				chrome.tabs.onUpdated.addListener(function waitForLoad(tabId, info) {
-					if (tabId === updatedTab.id && info.status === 'complete') {
-						chrome.tabs.onUpdated.removeListener(waitForLoad);
-						doSyncWithTab(tabId);
-					}
-				});
-			});
-		}
 	});
 }

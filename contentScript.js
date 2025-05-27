@@ -1,12 +1,12 @@
-// Extract channel ID from URL
-function extractChannelIdFromUrl(url) {
-	const channelMatch = url.match(/\/channel\/([^/?&]+)/);
-	if (channelMatch) return channelMatch[1];
-	const userMatch = url.match(/\/user\/([^/?&]+)/);
-	if (userMatch) return userMatch[1];
-	return url;
-}
+// Respond to fetch request
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+	if (message.type === 'FETCH_SUBSCRIPTIONS') {
+		const subs = scrapeSubscriptions();
+		sendResponse({ subs });
+	}
+});
 
+// Scrape subscriptions
 function scrapeSubscriptions() {
 	const subs = [];
 	const channelElements = document.querySelectorAll('ytd-channel-renderer');
@@ -32,10 +32,11 @@ function scrapeSubscriptions() {
 	return subs;
 }
 
-// Respond to scrape request
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-	if (message.type === 'SCRAPE_SUBSCRIPTIONS') {
-		const subs = scrapeSubscriptions();
-		sendResponse({ subs });
-	}
-});
+// Extract channel ID from URL
+function extractChannelIdFromUrl(url) {
+	const channelMatch = url.match(/\/channel\/([^/?&]+)/);
+	if (channelMatch) return channelMatch[1];
+	const userMatch = url.match(/\/user\/([^/?&]+)/);
+	if (userMatch) return userMatch[1];
+	return url;
+}
