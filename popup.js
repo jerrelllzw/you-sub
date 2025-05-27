@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		.getElementById('openAndSyncBtn')
 		.addEventListener('click', openAndSync);
 	document.getElementById('addGroupBtn').addEventListener('click', addNewGroup);
+	document
+		.getElementById('add-default-groups')
+		.addEventListener('click', addDefaultGroups);
 	loadAndDisplayGroups();
 });
 
@@ -205,8 +208,21 @@ function syncWithStorage(subsFromYouTube, done) {
 // Group CRUD operations //
 ///////////////////////////
 
-// Default group name
+// Defaults
 const defaultGroup = 'Ungrouped';
+const defaultGroups = [
+	'Basketball',
+	'Boxing',
+	'Chess',
+	'Documentary',
+	'Educational',
+	'Entertainment',
+	'Food',
+	'Friends',
+	'Gaming',
+	'Home',
+	'Web Design',
+];
 
 // Add new group from input
 function addNewGroup() {
@@ -227,6 +243,17 @@ function addNewGroup() {
 		} else {
 			alert('Group already exists.');
 		}
+	});
+}
+
+// Add default groups if they don't already exist
+function addDefaultGroups() {
+	chrome.storage.local.get(['groups'], (result) => {
+		const existingGroups = result.groups || [];
+		const newGroups = [...new Set([...existingGroups, ...defaultGroups])];
+		chrome.storage.local.set({ groups: newGroups }, () => {
+			loadAndDisplayGroups();
+		});
 	});
 }
 
