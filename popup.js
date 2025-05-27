@@ -22,7 +22,6 @@ function loadAndDisplayGroups() {
 		container.innerHTML = '';
 
 		let groups = result.groups || [defaultGroup];
-		groups.sort((a, b) => a.localeCompare(b)); // Sort alphabetically
 		const subs = result.subscriptions || {};
 		const grouped = {};
 
@@ -31,6 +30,12 @@ function loadAndDisplayGroups() {
 			const sub = subs[id];
 			if (!grouped[sub.group]) grouped[sub.group] = [];
 			grouped[sub.group].push(sub);
+		}
+
+		// Sort everything alphabetically
+		groups.sort((a, b) => a.localeCompare(b));
+		for (const group in grouped) {
+			grouped[group].sort((a, b) => a.name.localeCompare(b.name));
 		}
 
 		// For each group
