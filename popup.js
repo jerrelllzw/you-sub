@@ -193,9 +193,11 @@ function syncWithStorage(subsFromYouTube, done) {
 
 		// Update existing subscriptions and remove old ones
 		for (const sub of subsFromYouTube) {
+			const existing = subscriptions[sub.channelId];
 			updated[sub.channelId] = {
 				...sub,
-				group: subscriptions[sub.channelId]?.group || defaultGroup,
+				icon: sub.icon || existing?.icon,
+				group: existing?.group || defaultGroup,
 			};
 		}
 
