@@ -1,0 +1,47 @@
+.channel-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 6px;
+}
+
+.channel-link {
+	flex: 1;
+	margin-right: 6px;
+	text-decoration: none;
+	color: #0073e6;
+}
+
+select {
+	font-size: 12px;
+}
+
+.group-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 10px;
+	font-weight: bold;
+}
+
+.delete-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	color: red;
+}
+
+.channel-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.channel-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+  object-fit: cover;
+}
