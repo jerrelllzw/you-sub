@@ -4,9 +4,14 @@
 
 // Ensure the popup is ready before adding event listeners
 document.addEventListener('DOMContentLoaded', () => {
-	document
-		.getElementById('openAndSyncBtn')
-		.addEventListener('click', openAndSync);
+	document.getElementById('youtubeLink').addEventListener('click', (e) => {
+		e.preventDefault();
+		const url = e.target.href;
+		chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+			chrome.tabs.update(tabs[0].id, { url: url });
+		});
+	});
+	document.getElementById('syncBtn').addEventListener('click', sync);
 	document.getElementById('addGroupBtn').addEventListener('click', addNewGroup);
 	document
 		.getElementById('add-default-groups')
@@ -132,35 +137,20 @@ function updateSubscriptionGroup(channelId, newGroup, callback) {
 // Sync functions //
 ////////////////////
 
-// Open YouTube subscriptions page and sync with local storage
-function openAndSync() {
+// Sync YouTube subscriptions page and with local storage
+function sync() {
 	chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 		const tab = tabs[0];
 
-		// Go to subscriptions page if not already there, then sync
+		// Sync if on the YouTube subscriptions page
 		if (tab.url.includes('youtube.com/feed/channels')) {
 			fetchAndSyncWithTab(tab.id);
 		} else {
-			chrome.tabs.update(
-				tab.id,
-				{ url: 'https://www.youtube.com/feed/channels' },
-				(updatedTab) => {
-					waitForTabLoad(updatedTab.id, fetchAndSyncWithTab);
-				}
+			alert(
+				'Please open the YouTube subscriptions page to sync subscriptions.'
 			);
 		}
 	});
-}
-
-// Wait for the tab to finish loading before syncing
-function waitForTabLoad(tabId, callback) {
-	function handleUpdate(updatedTabId, info) {
-		if (updatedTabId === tabId && info.status === 'complete') {
-			chrome.tabs.onUpdated.removeListener(handleUpdate);
-			callback(tabId);
-		}
-	}
-	chrome.tabs.onUpdated.addListener(handleUpdate);
 }
 
 // Sync subscriptions from the active YouTube tab

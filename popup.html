@@ -1,19 +1,39 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>YouTube Organizer</title>
+		<title>YouSub</title>
 		<link rel="stylesheet" href="styles.css" />
 	</head>
 	<body>
-		<button id="openAndSyncBtn">Open & Sync Subscriptions</button>
-
-		<button id="add-default-groups">Add Default Groups</button>
-
-		<div id="addGroupSection">
-			<h4>Add New Group</h4>
-			<input type="text" id="newGroupInput" placeholder="Group name" />
-			<button id="addGroupBtn">Add</button>
+		<h2>Functions</h2>
+		<div style="margin-bottom: 10px;">
+			<span>1. Go to</span>
+			<a href="https://www.youtube.com/feed/channels" id="youtubeLink"
+				>Subscriptions</a
+			>
 		</div>
+		<div style="margin-bottom: 10px;">
+			<span>2.</span>
+			<button id="syncBtn">Sync Subscriptions</button>
+		</div>
+		<div style="margin-bottom: 10px;">
+			<span>3.</span>
+			<button id="add-default-groups">Add Default Groups</button>
+		</div>
+		<div style="margin-bottom: 20px;">
+			<div style="display: flex; gap: 3px;">
+				<span>4.</span>
+				<input
+					type="text"
+					id="newGroupInput"
+					placeholder="Add New Group"
+					style="max-width: 100px"
+				/>
+				<button id="addGroupBtn">Add</button>
+			</div>
+		</div>
+
+		<hr></hr>
 
 		<h2>My Subscriptions</h2>
 		<div id="groups"></div>
