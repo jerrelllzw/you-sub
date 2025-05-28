@@ -203,6 +203,7 @@ function syncWithStorage(subsFromYouTube, done) {
 // Defaults
 const defaultGroup = 'Ungrouped';
 const defaultGroups = [
+	'Ungrouped',
 	'Basketball',
 	'Boxing',
 	'Chess',
